@@ -18,6 +18,8 @@ const analysis = {
   overlaps: [],
   passing: [],
   results: [],
+  invalidRowList: [],
+
 } as unknown as Analysis;
 
 function stubDom(iframe: boolean) {
