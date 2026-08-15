@@ -158,19 +158,47 @@ function Index() {
             {analysis ? (
               <button
                 type="button"
-                onClick={() => downloadReport(analysis)}
+                onClick={() => setDelivery(downloadReport(analysis) ?? null)}
                 className="rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent"
               >
-                Re-download {exportFileName(analysis)}
+                Download {exportFileName(analysis)}
               </button>
             ) : null}
           </div>
+
+          {delivery && !delivery.autoDownloaded ? (
+            <div className="flex flex-col gap-2 rounded-md border border-warning/50 bg-warning/10 px-3 py-3 text-sm text-foreground">
+              <p>
+                The preview window blocks automatic downloads. Save the report manually, or open the
+                app in its own browser tab to get it automatically.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  href={delivery.url}
+                  download={delivery.fileName}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="num rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  Save {delivery.fileName}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => void copyReport()}
+                  className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent"
+                >
+                  Copy report text
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {error ? (
             <p className="num rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
             </p>
           ) : null}
+
         </section>
 
         {analysis ? (
