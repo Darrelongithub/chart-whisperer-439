@@ -1,7 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 
-import { downloadReport, exportFileName } from "@/lib/analyzer/export";
+import {
+  buildReport,
+  downloadReport,
+  exportFileName,
+  type DownloadOutcome,
+} from "@/lib/analyzer/export";
+
 import { runAnalysis } from "@/lib/analyzer/run";
 import type { Analysis, ResultRow } from "@/lib/analyzer/types";
 
