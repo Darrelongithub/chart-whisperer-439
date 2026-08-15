@@ -80,15 +80,44 @@ export function buildReport(analysis: Analysis): string {
   return lines.join("\n");
 }
 
-export function downloadReport(analysis: Analysis): void {
-  if (typeof document === "undefined") return;
+export interface DownloadOutcome {
+  fileName: string;
+  /** Blob URL kept alive so the UI can offer a manual fallback link. */
+  url: string;
+  /** False when the page is sandboxed in an iframe, where downloads are blocked. */
+  autoDownloaded: boolean;
+}
+
+function inIframe(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+}
+
+export function downloadReport(analysis: Analysis): DownloadOutcome | undefined {
+  if (typeof document === "undefined") return undefined;
+  const fileName = exportFileName(analysis);
   const blob = new Blob([buildReport(analysis)], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
+
   const link = document.createElement("a");
   link.href = url;
-  link.download = exportFileName(analysis);
+  link.download = fileName;
+  link.rel = "noopener";
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+
+  let autoDownloaded = true;
+  if (inIframe()) {
+    // Preview iframes block downloads; hand the file to a top-level tab instead.
+    autoDownloaded = window.open(url, "_blank", "noopener") !== null;
+  }
+
+  // Revoke late: revoking immediately can cancel an in-flight download.
+  window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+  return { fileName, url, autoDownloaded };
 }
+
