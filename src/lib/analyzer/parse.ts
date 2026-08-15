@@ -66,7 +66,10 @@ function refs(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-/** First non-empty line is the JSON metadata header; the next line is the CSV header. */
+/**
+ * First non-empty line carries the JSON metadata header. It may be prefixed with
+ * arbitrary text (e.g. `# metadata: `), so we parse from the first `{` onwards.
+ */
 export function parseCsv(text: string): ParseResult {
   const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
   if (lines.length === 0) {
@@ -75,10 +78,14 @@ export function parseCsv(text: string): ParseResult {
 
   let metaRaw: Record<string, unknown> = {};
   try {
-    const first = lines[0]!.trim().replace(/^#\s*/, "");
+    const firstLine = lines[0]!;
+    const braceIndex = firstLine.indexOf("{");
+    if (braceIndex === -1) throw new Error("no json object on metadata line");
+    const first = firstLine.slice(braceIndex).trim();
     const parsed: unknown = JSON.parse(first);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not object");
     metaRaw = parsed as Record<string, unknown>;
+
   } catch {
     return {
       candles: [],

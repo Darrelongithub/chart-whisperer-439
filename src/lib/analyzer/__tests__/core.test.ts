@@ -38,6 +38,23 @@ describe("parse", () => {
     expect(parsed.metadataError).toBe("INVALID FILE: missing metadata field data_age");
   });
 
+  it("parses a metadata line with a prefix before the JSON object", () => {
+    for (const prefix of ["# metadata: ", "## meta -> ", ""]) {
+      const parsed = parseCsv([prefix + metadataLine(), HEADER].join("\n"));
+      expect(parsed.metadataError).toBeUndefined();
+      expect(parsed.meta?.data_age).toBeTruthy();
+      expect(parsed.meta?.spread_convention).toBeTruthy();
+      expect(parsed.meta?.atr_method).toBeTruthy();
+      expect(parsed.meta?.similar_swing_selection_rule).toBeTruthy();
+    }
+  });
+
+  it("rejects a metadata line with no JSON object at all", () => {
+    const parsed = parseCsv(["# metadata: none", HEADER].join("\n"));
+    expect(parsed.metadataError).toBe("INVALID FILE: metadata header line is not valid JSON");
+  });
+
+
   it("flags rows missing core fields but keeps them in the row list", () => {
     const text = [
       metadataLine(),
