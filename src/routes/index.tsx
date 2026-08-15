@@ -58,12 +58,14 @@ function Index() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [strategyFilter, setStrategyFilter] = useState("all");
   const [resultFilter, setResultFilter] = useState<"all" | "PASS" | "FAIL">("all");
+  const [delivery, setDelivery] = useState<DownloadOutcome | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
     setStatus("working");
     setError(null);
     setFileName(file.name);
+    setDelivery(null);
     const text = await file.text();
     const outcome = runAnalysis(text);
     if (!outcome.ok) {
@@ -76,8 +78,18 @@ function Index() {
     setStrategyFilter("all");
     setResultFilter("all");
     setStatus("ready");
-    downloadReport(outcome.analysis);
+    setDelivery(downloadReport(outcome.analysis) ?? null);
   }
+
+  async function copyReport() {
+    if (!analysis) return;
+    try {
+      await navigator.clipboard.writeText(buildReport(analysis));
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+
 
   const rows: ResultRow[] = useMemo(() => {
     if (!analysis) return [];
