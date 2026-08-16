@@ -222,9 +222,9 @@ function Index() {
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {[
                   ["Total candles", analysis.totalRows],
-                  ["Analyzed", analysis.analyzedRows],
-                  ["INVALID rows", analysis.invalidRows],
                   ["PASS setups", analysis.passing.length],
+                  ["Live/actionable", analysis.live.length],
+                  ["Historical", analysis.historical.length],
                 ].map(([label, value]) => (
                   <div key={String(label)} className="rounded-md bg-secondary/60 p-4">
                     <p className="text-xs text-muted-foreground">{label}</p>
