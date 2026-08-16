@@ -63,14 +63,14 @@ function Index() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [strategyFilter, setStrategyFilter] = useState("all");
   const [resultFilter, setResultFilter] = useState<"all" | "PASS" | "FAIL">("all");
-  const [delivery, setDelivery] = useState<DownloadOutcome | null>(null);
+  const [delivery, setDelivery] = useState<DownloadOutcome[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
     setStatus("working");
     setError(null);
     setFileName(file.name);
-    setDelivery(null);
+    setDelivery([]);
     const text = await file.text();
     const outcome = runAnalysis(text);
     if (!outcome.ok) {
@@ -83,13 +83,13 @@ function Index() {
     setStrategyFilter("all");
     setResultFilter("all");
     setStatus("ready");
-    setDelivery(downloadReport(outcome.analysis) ?? null);
+    setDelivery(downloadReports(outcome.analysis));
   }
 
-  async function copyReport() {
+  async function copyReport(kind: "LIVE" | "HISTORY") {
     if (!analysis) return;
     try {
-      await navigator.clipboard.writeText(buildReport(analysis));
+      await navigator.clipboard.writeText(buildReport(analysis, kind));
     } catch {
       /* clipboard unavailable */
     }
