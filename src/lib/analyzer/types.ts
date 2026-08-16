@@ -115,4 +115,8 @@ export interface Analysis {
   }[];
   overlaps: OverlapEntry[];
   lastRowDatetime: string;
+  /** PENDING or FILLED — still tradeable as of the last row. */
+  live: ResultRow[];
+  /** RESOLVED or EXPIRED — kept for backtesting, not actionable. */
+  historical: ResultRow[];
 }
