@@ -1,6 +1,7 @@
 import { ema, sessionBlocks } from "./indicators";
 import { applySpreadAndRR, RR_FAIL_REASON, RR_THRESHOLD } from "./math";
 import { parseCsv, parseSpread } from "./parse";
+import { evaluateSetupStatus, isLive } from "./status";
 import { STRATEGIES } from "./strategies";
 import { buildIndex, computeMarketStructure } from "./structure";
 import type {
