@@ -1,6 +1,7 @@
 import { ema, sessionBlocks } from "./indicators";
 import { applySpreadAndRR, RR_FAIL_REASON, RR_THRESHOLD } from "./math";
 import { parseCsv, parseSpread } from "./parse";
+import { evaluateSetupStatus, isLive } from "./status";
 import { STRATEGIES } from "./strategies";
 import { buildIndex, computeMarketStructure } from "./structure";
 import type {
@@ -111,8 +112,26 @@ export function runAnalysis(text: string): RunOutcome {
     .filter((r) => r.result === "PASS")
     .sort((a, b) => (b.rr ?? 0) - (a.rr ?? 0));
 
-  const overlapMap = new Map<string, string[]>();
+  // Step 6: forward-check each PASS against later candles ("now" = last row).
   for (const row of passing) {
+    const evaluation = evaluateSetupStatus(row, candles);
+    row.setupStatus = evaluation.setupStatus;
+    row.statusNote = evaluation.statusNote;
+    row.candlesSinceTrigger = evaluation.candlesSinceTrigger;
+  }
+
+  const statusRank: Record<string, number> = { PENDING: 0, FILLED: 1 };
+  const live = passing
+    .filter((r) => isLive(r.setupStatus))
+    .sort(
+      (a, b) =>
+        (statusRank[a.setupStatus ?? ""] ?? 9) - (statusRank[b.setupStatus ?? ""] ?? 9) ||
+        (b.rr ?? 0) - (a.rr ?? 0),
+    );
+  const historical = passing.filter((r) => !isLive(r.setupStatus));
+
+  const overlapMap = new Map<string, string[]>();
+  for (const row of live) {
     const list = overlapMap.get(row.datetime) ?? [];
     list.push(row.strategy);
     overlapMap.set(row.datetime, list);
@@ -131,6 +150,8 @@ export function runAnalysis(text: string): RunOutcome {
     invalidRowList,
     results,
     passing,
+    live,
+    historical,
     perStrategy,
     overlaps,
     lastRowDatetime: candles[candles.length - 1]?.datetime ?? "",

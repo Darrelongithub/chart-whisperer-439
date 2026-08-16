@@ -17,6 +17,8 @@ const analysis = {
   perStrategy: [],
   overlaps: [],
   passing: [],
+  live: [],
+  historical: [],
   results: [],
   invalidRowList: [],
 
@@ -45,10 +47,10 @@ describe("downloadReport", () => {
     const { link, openSpy } = stubDom(false);
     const outcome = downloadReport(analysis);
     expect(outcome).toMatchObject({
-      fileName: "structure-scout_2024-05-03-11-30.txt",
+      fileName: "structure-scout_LIVE_2024-05-03-11-30.txt",
       autoDownloaded: true,
     });
-    expect(link["download"]).toBe("structure-scout_2024-05-03-11-30.txt");
+    expect(link["download"]).toBe("structure-scout_LIVE_2024-05-03-11-30.txt");
     expect(link["click"]).toHaveBeenCalled();
     expect(openSpy).not.toHaveBeenCalled();
   });

@@ -3,8 +3,7 @@ import { useMemo, useRef, useState } from "react";
 
 import {
   buildReport,
-  downloadReport,
-  exportFileName,
+  downloadReports,
   type DownloadOutcome,
 } from "@/lib/analyzer/export";
 
@@ -64,14 +63,14 @@ function Index() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [strategyFilter, setStrategyFilter] = useState("all");
   const [resultFilter, setResultFilter] = useState<"all" | "PASS" | "FAIL">("all");
-  const [delivery, setDelivery] = useState<DownloadOutcome | null>(null);
+  const [delivery, setDelivery] = useState<DownloadOutcome[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
     setStatus("working");
     setError(null);
     setFileName(file.name);
-    setDelivery(null);
+    setDelivery([]);
     const text = await file.text();
     const outcome = runAnalysis(text);
     if (!outcome.ok) {
@@ -84,13 +83,13 @@ function Index() {
     setStrategyFilter("all");
     setResultFilter("all");
     setStatus("ready");
-    setDelivery(downloadReport(outcome.analysis) ?? null);
+    setDelivery(downloadReports(outcome.analysis));
   }
 
-  async function copyReport() {
+  async function copyReport(kind: "LIVE" | "HISTORY") {
     if (!analysis) return;
     try {
-      await navigator.clipboard.writeText(buildReport(analysis));
+      await navigator.clipboard.writeText(buildReport(analysis, kind));
     } catch {
       /* clipboard unavailable */
     }
@@ -158,38 +157,40 @@ function Index() {
             {analysis ? (
               <button
                 type="button"
-                onClick={() => setDelivery(downloadReport(analysis) ?? null)}
+                onClick={() => setDelivery(downloadReports(analysis))}
                 className="rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent"
               >
-                Download {exportFileName(analysis)}
+                Download both reports
               </button>
             ) : null}
           </div>
 
-          {delivery && !delivery.autoDownloaded ? (
+          {delivery.some((d) => !d.autoDownloaded) ? (
             <div className="flex flex-col gap-2 rounded-md border border-warning/50 bg-warning/10 px-3 py-3 text-sm text-foreground">
               <p>
-                The preview window blocks automatic downloads. Save the report manually, or open the
-                app in its own browser tab to get it automatically.
+                The preview window blocks automatic downloads. Save the reports manually, or open the
+                app in its own browser tab to get them automatically.
               </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <a
-                  href={delivery.url}
-                  download={delivery.fileName}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="num rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  Save {delivery.fileName}
-                </a>
-                <button
-                  type="button"
-                  onClick={() => void copyReport()}
-                  className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent"
-                >
-                  Copy report text
-                </button>
-              </div>
+              {delivery.map((item) => (
+                <div key={item.kind} className="flex flex-wrap items-center gap-3">
+                  <a
+                    href={item.url}
+                    download={item.fileName}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="num rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Save {item.fileName}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => void copyReport(item.kind)}
+                    className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent"
+                  >
+                    Copy {item.kind} text
+                  </button>
+                </div>
+              ))}
             </div>
           ) : null}
 
@@ -221,9 +222,9 @@ function Index() {
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {[
                   ["Total candles", analysis.totalRows],
-                  ["Analyzed", analysis.analyzedRows],
-                  ["INVALID rows", analysis.invalidRows],
                   ["PASS setups", analysis.passing.length],
+                  ["Live/actionable", analysis.live.length],
+                  ["Historical", analysis.historical.length],
                 ].map(([label, value]) => (
                   <div key={String(label)} className="rounded-md bg-secondary/60 p-4">
                     <p className="text-xs text-muted-foreground">{label}</p>
@@ -269,30 +270,71 @@ function Index() {
               </div>
 
               <div className="flex flex-col gap-3">
-                <h3 className="text-sm font-medium text-foreground">Ranked PASS setups (RR desc)</h3>
-                {analysis.passing.length === 0 ? (
+                <h3 className="text-sm font-medium text-foreground">
+                  Live / actionable ({analysis.live.length}) — PENDING first, then RR
+                </h3>
+                {analysis.live.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border p-6 text-center">
                     <p className="text-sm font-medium text-foreground">
-                      No strategy produced a PASS on this file.
+                      No live setups as of {analysis.lastRowDatetime || "the last candle"}.
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Every candle was still checked — open the results table below to see the exact
-                      failing reason for each strategy.
+                      Every candle was still checked — see the historical record below and the
+                      results table for exact reasons.
                     </p>
                   </div>
                 ) : (
                   <ol className="flex flex-col gap-2">
-                    {analysis.passing.slice(0, 25).map((row, i) => (
+                    {analysis.live.map((row, i) => (
                       <li
                         key={`${row.strategyId}-${row.index}`}
                         className="num flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/60 px-4 py-2 text-xs text-foreground"
                       >
                         <span>
-                          {i + 1}. {row.strategy} @ {row.datetime}
+                          {i + 1}.{" "}
+                          <span
+                            className={
+                              row.setupStatus === "FILLED"
+                                ? "rounded bg-warning/15 px-2 py-0.5 text-warning"
+                                : "rounded bg-success/15 px-2 py-0.5 text-success"
+                            }
+                          >
+                            {row.setupStatus}
+                          </span>{" "}
+                          {row.strategy} @ {row.datetime}
                         </span>
                         <span className="text-muted-foreground">
                           entry {price(row.entry)} · SL {price(row.sl)} · TP {price(row.tp)} ·{" "}
                           <span className="text-success">RR {row.rr?.toFixed(2)}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <h3 className="text-sm font-medium text-foreground">
+                  Historical record ({analysis.historical.length}) — resolved or expired
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Valid setups that are no longer tradeable. Kept for win-rate backtesting, not
+                  counted as failures.
+                </p>
+                {analysis.historical.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">none</p>
+                ) : (
+                  <ol className="flex flex-col gap-2">
+                    {analysis.historical.slice(0, 50).map((row, i) => (
+                      <li
+                        key={`${row.strategyId}-${row.index}`}
+                        className="num flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/40 px-4 py-2 text-xs text-muted-foreground"
+                      >
+                        <span>
+                          {i + 1}. [{row.setupStatus}] {row.strategy} @ {row.datetime}
+                        </span>
+                        <span>
+                          RR {row.rr?.toFixed(2)} · {row.statusNote}
                         </span>
                       </li>
                     ))}

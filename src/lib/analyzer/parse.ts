@@ -117,7 +117,10 @@ export function parseCsv(text: string): ParseResult {
   const candles: Candle[] = [];
 
   for (let l = 2; l < lines.length; l++) {
+    // Day-header dividers like `=== MONDAY 2026-07-13 (UTC) ===` are not data.
+    if (lines[l]!.trim().startsWith("===")) continue;
     const cells = splitCsvLine(lines[l]!);
+    if ((cells[0] ?? "").startsWith("===")) continue;
     const raw: Record<string, string> = {};
     header.forEach((key, idx) => {
       raw[key] = cells[idx] ?? "";

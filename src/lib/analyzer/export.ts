@@ -1,33 +1,78 @@
-import type { Analysis } from "./types";
+import type { Analysis, ResultRow } from "./types";
+
+export type ReportKind = "LIVE" | "HISTORY";
 
 function fmt(value: number | undefined): string {
   return value === undefined ? "-" : String(Number(value.toFixed(5)));
 }
 
-/** Slug built from the last analysed row's datetime, e.g. 2024-05-03 14:30 -> 2024-05-03_1430 */
-export function exportFileName(analysis: Analysis): string {
-  const slug = (analysis.lastRowDatetime || "analysis")
-    .trim()
-    .replace(/[:\s/]+/g, "-")
-    .replace(/[^0-9A-Za-z_-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-  return `structure-scout_${slug || "analysis"}.txt`;
+function slugOf(analysis: Analysis): string {
+  return (
+    (analysis.lastRowDatetime || "analysis")
+      .trim()
+      .replace(/[:\s/]+/g, "-")
+      .replace(/[^0-9A-Za-z_-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "analysis"
+  );
 }
 
-export function buildReport(analysis: Analysis): string {
-  const lines: string[] = [];
+/** Slug built from the last analysed row's datetime, e.g. structure-scout_LIVE_2026-08-14-2330.txt */
+export function exportFileName(analysis: Analysis, kind: ReportKind = "LIVE"): string {
+  return `structure-scout_${kind}_${slugOf(analysis)}.txt`;
+}
 
-  lines.push("=== SUMMARY ===");
-  lines.push(`data_age: ${analysis.meta.data_age}`);
-  lines.push(`spread_convention: ${analysis.meta.spread_convention} (applied: ${analysis.spread})`);
-  lines.push(`atr_method: ${analysis.meta.atr_method}`);
-  lines.push(`similar_swing_selection_rule: ${analysis.meta.similar_swing_selection_rule}`);
-  lines.push("");
+function setupLine(row: ResultRow, i: number): string {
+  return `${i + 1}. [${row.setupStatus ?? "-"}] ${row.strategy} @ ${row.datetime} | ${row.side ?? "-"} | entry ${fmt(row.entry)} | SL ${fmt(row.sl)} | TP ${fmt(row.tp)} | RR ${row.rr === undefined ? "-" : row.rr.toFixed(2)} | ${row.statusNote ?? ""}`;
+}
+
+function header(analysis: Analysis, title: string): string[] {
+  return [
+    `=== ${title} ===`,
+    `data_age: ${analysis.meta.data_age}`,
+    `current_time (last row): ${analysis.lastRowDatetime}`,
+    `spread_convention: ${analysis.meta.spread_convention} (applied: ${analysis.spread})`,
+    `atr_method: ${analysis.meta.atr_method}`,
+    `similar_swing_selection_rule: ${analysis.meta.similar_swing_selection_rule}`,
+    "",
+  ];
+}
+
+/** File 1: only PENDING/FILLED setups — what can still be acted on. */
+export function buildLiveReport(analysis: Analysis): string {
+  const lines = header(analysis, "SUMMARY");
   lines.push(`Total candles: ${analysis.totalRows}`);
   lines.push(`Analyzed candles: ${analysis.analyzedRows}`);
-  lines.push(`INVALID rows: ${analysis.invalidRows}`);
   lines.push(`Total PASS setups: ${analysis.passing.length}`);
+  lines.push(`Live/actionable setups: ${analysis.live.length}`);
+  lines.push("");
+
+  lines.push("=== LIVE / ACTIONABLE ===");
+  if (analysis.live.length === 0) {
+    lines.push("none — no PENDING or FILLED setups as of the last candle");
+  }
+  analysis.live.forEach((row, i) => lines.push(setupLine(row, i)));
+  lines.push("");
+
+  lines.push("-- Overlaps (same candle, multiple live setups) --");
+  if (analysis.overlaps.length === 0) lines.push("none");
+  for (const overlap of analysis.overlaps) {
+    lines.push(`${overlap.datetime}: ${overlap.strategies.join(", ")}`);
+  }
+
+  return lines.join("\n");
+}
+
+/** File 2: resolved/expired setups plus the full diagnostic result table. */
+export function buildHistoryReport(analysis: Analysis): string {
+  const lines = header(analysis, "HISTORICAL RECORD");
+  lines.push(`INVALID rows: ${analysis.invalidRows}`);
+  lines.push(`Historical (RESOLVED/EXPIRED) setups: ${analysis.historical.length}`);
+  lines.push("");
+
+  lines.push("-- Historical setups (valid logic, no longer live) --");
+  if (analysis.historical.length === 0) lines.push("none");
+  analysis.historical.forEach((row, i) => lines.push(setupLine(row, i)));
   lines.push("");
 
   lines.push("-- Per strategy --");
@@ -39,30 +84,15 @@ export function buildReport(analysis: Analysis): string {
   }
   lines.push("");
 
-  lines.push("-- Overlaps (same candle, multiple PASS) --");
-  if (analysis.overlaps.length === 0) lines.push("none");
-  for (const overlap of analysis.overlaps) {
-    lines.push(`${overlap.datetime}: ${overlap.strategies.join(", ")}`);
-  }
-  lines.push("");
-
-  lines.push("-- Ranked PASS setups (RR desc) --");
-  if (analysis.passing.length === 0) lines.push("none");
-  analysis.passing.forEach((row, i) => {
-    lines.push(
-      `${i + 1}. ${row.strategy} @ ${row.datetime} | ${row.side ?? "-"} | entry ${fmt(row.entry)} | SL ${fmt(row.sl)} | TP ${fmt(row.tp)} | RR ${row.rr === undefined ? "-" : row.rr.toFixed(2)}`,
-    );
-  });
-  lines.push("");
-
   lines.push("=== RESULTS ===");
-  lines.push("datetime | strategy | result | trend | entry | SL | TP | RR | reason");
+  lines.push("datetime | strategy | result | status | trend | entry | SL | TP | RR | reason");
   for (const row of analysis.results) {
     lines.push(
       [
         row.datetime,
         row.strategy,
         row.result,
+        row.setupStatus ?? "-",
         row.trend,
         fmt(row.entry),
         fmt(row.sl),
@@ -74,13 +104,20 @@ export function buildReport(analysis: Analysis): string {
   }
 
   for (const invalid of analysis.invalidRowList) {
-    lines.push(`${invalid.datetime} | (all strategies) | SKIPPED | - | - | - | - | - | ${invalid.reason}`);
+    lines.push(
+      `${invalid.datetime} | (all strategies) | SKIPPED | - | - | - | - | - | - | ${invalid.reason}`,
+    );
   }
 
   return lines.join("\n");
 }
 
+export function buildReport(analysis: Analysis, kind: ReportKind = "LIVE"): string {
+  return kind === "LIVE" ? buildLiveReport(analysis) : buildHistoryReport(analysis);
+}
+
 export interface DownloadOutcome {
+  kind: ReportKind;
   fileName: string;
   /** Blob URL kept alive so the UI can offer a manual fallback link. */
   url: string;
@@ -96,10 +133,13 @@ function inIframe(): boolean {
   }
 }
 
-export function downloadReport(analysis: Analysis): DownloadOutcome | undefined {
+export function downloadReport(
+  analysis: Analysis,
+  kind: ReportKind = "LIVE",
+): DownloadOutcome | undefined {
   if (typeof document === "undefined") return undefined;
-  const fileName = exportFileName(analysis);
-  const blob = new Blob([buildReport(analysis)], { type: "text/plain;charset=utf-8" });
+  const fileName = exportFileName(analysis, kind);
+  const blob = new Blob([buildReport(analysis, kind)], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
@@ -118,6 +158,12 @@ export function downloadReport(analysis: Analysis): DownloadOutcome | undefined 
 
   // Revoke late: revoking immediately can cancel an in-flight download.
   window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
-  return { fileName, url, autoDownloaded };
+  return { kind, fileName, url, autoDownloaded };
 }
 
+/** Both files auto-download on completion. */
+export function downloadReports(analysis: Analysis): DownloadOutcome[] {
+  return [downloadReport(analysis, "LIVE"), downloadReport(analysis, "HISTORY")].filter(
+    (o): o is DownloadOutcome => o !== undefined,
+  );
+}

@@ -192,10 +192,13 @@ describe("runAnalysis", () => {
   it("names the export from the last row datetime and writes both sections", () => {
     const outcome = runAnalysis(text);
     if (!outcome.ok) throw new Error("expected success");
-    expect(exportFileName(outcome.analysis)).toBe("structure-scout_2024-01-02-01-00.txt");
+    expect(exportFileName(outcome.analysis)).toBe("structure-scout_LIVE_2024-01-02-01-00.txt");
+    expect(exportFileName(outcome.analysis, "HISTORY")).toBe(
+      "structure-scout_HISTORY_2024-01-02-01-00.txt",
+    );
     const report = buildReport(outcome.analysis);
     expect(report).toContain("=== SUMMARY ===");
-    expect(report).toContain("=== RESULTS ===");
+    expect(buildReport(outcome.analysis, "HISTORY")).toContain("=== RESULTS ===");
     expect(report).toContain("data_age: 2h");
   });
 });
