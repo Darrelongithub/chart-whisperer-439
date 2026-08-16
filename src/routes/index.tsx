@@ -270,30 +270,71 @@ function Index() {
               </div>
 
               <div className="flex flex-col gap-3">
-                <h3 className="text-sm font-medium text-foreground">Ranked PASS setups (RR desc)</h3>
-                {analysis.passing.length === 0 ? (
+                <h3 className="text-sm font-medium text-foreground">
+                  Live / actionable ({analysis.live.length}) — PENDING first, then RR
+                </h3>
+                {analysis.live.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border p-6 text-center">
                     <p className="text-sm font-medium text-foreground">
-                      No strategy produced a PASS on this file.
+                      No live setups as of {analysis.lastRowDatetime || "the last candle"}.
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Every candle was still checked — open the results table below to see the exact
-                      failing reason for each strategy.
+                      Every candle was still checked — see the historical record below and the
+                      results table for exact reasons.
                     </p>
                   </div>
                 ) : (
                   <ol className="flex flex-col gap-2">
-                    {analysis.passing.slice(0, 25).map((row, i) => (
+                    {analysis.live.map((row, i) => (
                       <li
                         key={`${row.strategyId}-${row.index}`}
                         className="num flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/60 px-4 py-2 text-xs text-foreground"
                       >
                         <span>
-                          {i + 1}. {row.strategy} @ {row.datetime}
+                          {i + 1}.{" "}
+                          <span
+                            className={
+                              row.setupStatus === "FILLED"
+                                ? "rounded bg-warning/15 px-2 py-0.5 text-warning"
+                                : "rounded bg-success/15 px-2 py-0.5 text-success"
+                            }
+                          >
+                            {row.setupStatus}
+                          </span>{" "}
+                          {row.strategy} @ {row.datetime}
                         </span>
                         <span className="text-muted-foreground">
                           entry {price(row.entry)} · SL {price(row.sl)} · TP {price(row.tp)} ·{" "}
                           <span className="text-success">RR {row.rr?.toFixed(2)}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <h3 className="text-sm font-medium text-foreground">
+                  Historical record ({analysis.historical.length}) — resolved or expired
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Valid setups that are no longer tradeable. Kept for win-rate backtesting, not
+                  counted as failures.
+                </p>
+                {analysis.historical.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">none</p>
+                ) : (
+                  <ol className="flex flex-col gap-2">
+                    {analysis.historical.slice(0, 50).map((row, i) => (
+                      <li
+                        key={`${row.strategyId}-${row.index}`}
+                        className="num flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/40 px-4 py-2 text-xs text-muted-foreground"
+                      >
+                        <span>
+                          {i + 1}. [{row.setupStatus}] {row.strategy} @ {row.datetime}
+                        </span>
+                        <span>
+                          RR {row.rr?.toFixed(2)} · {row.statusNote}
                         </span>
                       </li>
                     ))}
