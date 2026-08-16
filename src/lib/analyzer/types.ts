@@ -72,6 +72,8 @@ export interface StrategyCheck {
   run: (ctx: AnalysisContext, i: number) => Outcome;
 }
 
+export type SetupStatus = "PENDING" | "FILLED" | "RESOLVED" | "EXPIRED";
+
 export interface ResultRow {
   strategyId: string;
   strategy: string;
@@ -85,6 +87,9 @@ export interface ResultRow {
   tp?: number | undefined;
   rr?: number | undefined;
   side?: "long" | "short" | undefined;
+  setupStatus?: SetupStatus | undefined;
+  statusNote?: string | undefined;
+  candlesSinceTrigger?: number | undefined;
 }
 
 export interface OverlapEntry {
