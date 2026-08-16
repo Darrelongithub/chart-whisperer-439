@@ -3,8 +3,7 @@ import { useMemo, useRef, useState } from "react";
 
 import {
   buildReport,
-  downloadReport,
-  exportFileName,
+  downloadReports,
   type DownloadOutcome,
 } from "@/lib/analyzer/export";
 
