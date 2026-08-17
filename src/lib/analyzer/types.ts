@@ -7,6 +7,8 @@ export interface Metadata {
   spread_convention: string;
   atr_method: string;
   similar_swing_selection_rule: string;
+  /** Optional: documents how the generator marks section/day divider lines. */
+  section_marker_convention?: string | undefined;
 }
 
 export const METADATA_FIELDS = [

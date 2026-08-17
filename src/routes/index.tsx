@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 
+import { VerifierPanel } from "@/components/verifier-panel";
+
 import {
   buildReport,
   downloadReports,
@@ -357,6 +359,8 @@ function Index() {
                 </div>
               ) : null}
             </section>
+
+            <VerifierPanel key={analysis.lastRowDatetime} scoutData={buildReport(analysis, "LIVE")} />
 
             <section className="panel flex flex-col gap-4 p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">

@@ -74,3 +74,35 @@ describe("parseCsv day headers", () => {
     expect(parsed.candles.every((c) => !c.invalid)).toBe(true);
   });
 });
+
+describe("divider detection via section_marker_convention", () => {
+  const rows = (marker: string) =>
+    [
+      `# metadata: {"data_age":"1h","spread_convention":"1.2 pips","atr_method":"wilder-14","similar_swing_selection_rule":"last 5","section_marker_convention":"divider lines are wrapped in ${marker}"}`,
+      "datetime,open,high,low,close,is_reliable",
+      `${marker} MONDAY 2026-07-13 (UTC) ${marker}`,
+      "2026-07-13 00:00,1,2,0.5,1.5,true",
+      `${marker} WEEKEND GAP ${marker}`,
+      "2026-07-14 00:00,1,2,0.5,1.5,true",
+    ].join("\n");
+
+  it("skips dividers using the documented marker, not a hardcoded ===", () => {
+    for (const marker of ["===", "---", "###"]) {
+      const parsed = parseCsv(rows(marker));
+      expect(parsed.candles).toHaveLength(2);
+      expect(parsed.candles.every((c) => !c.invalid)).toBe(true);
+      expect(parsed.invalidRowsSkipped).toBeUndefined();
+    }
+  });
+
+  it("never logs a marker-less, numberless divider as INVALID", () => {
+    const text = [
+      '# metadata: {"data_age":"1h","spread_convention":"1.2 pips","atr_method":"wilder-14","similar_swing_selection_rule":"last 5"}',
+      "datetime,open,high,low,close,is_reliable",
+      "WEEKEND — market closed",
+      "2026-07-13 00:00,1,2,0.5,1.5,true",
+    ].join("\n");
+    const parsed = parseCsv(text);
+    expect(parsed.candles).toHaveLength(1);
+  });
+});
