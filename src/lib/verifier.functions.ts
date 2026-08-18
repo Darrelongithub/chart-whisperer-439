@@ -68,7 +68,9 @@ export interface VerifyResult {
 }
 
 interface ChatResponse {
-  choices?: { message?: { content?: string; reasoning?: string } }[];
+  choices?: {
+    message?: { content?: string; reasoning?: string; reasoning_content?: string };
+  }[];
   error?: { message?: string };
 }
 
