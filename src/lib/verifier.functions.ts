@@ -47,13 +47,18 @@ spread-adjusted)
 Trade Summary: Source Strategy(ies) / Entry Reason / SL Justification / TP Justification /
 Invalidation Window / Data Age / Confidence (H/M/L)`;
 
+// OpenRouter retired the `:free` DeepSeek slugs (404: "unavailable for free"),
+// so the live R1 slugs come first with free reasoning models as a safety net.
 const OPENROUTER_MODELS = [
-  "deepseek/deepseek-r1:free",
-  "deepseek/deepseek-r1-0528:free",
-  "deepseek/deepseek-chat-v3-0324:free",
+  "deepseek/deepseek-r1",
+  "deepseek/deepseek-r1-0528",
+  "deepseek/deepseek-chat-v3-0324",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "openai/gpt-oss-20b:free",
 ];
 
-const NVIDIA_MODELS = ["deepseek-ai/deepseek-r1-0528", "deepseek-ai/deepseek-r1"];
+// Only DeepSeek model NVIDIA NIM currently serves on this key.
+const NVIDIA_MODELS = ["deepseek-ai/deepseek-v4-flash-0731", "deepseek-ai/deepseek-r1"];
 
 export interface VerifyResult {
   verdict: string;
