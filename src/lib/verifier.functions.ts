@@ -88,7 +88,7 @@ async function callChat(
       "Content-Type": "application/json",
       ...extraHeaders,
     },
-    body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 2000 }),
+    body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 3000 }),
   });
 
   const text = await res.text();
