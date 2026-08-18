@@ -151,6 +151,9 @@ export const verifySetup = createServerFn({ method: "POST" })
     const warnings: string[] = [];
     const openRouterKey = process.env["OPENROUTER_API_KEY"];
     const nvidiaKey = process.env["NVIDIA_API_KEY"];
+    console.log(
+      `[verifier] start chars=${userContent.length} or=${Boolean(openRouterKey)} nv=${Boolean(nvidiaKey)}`,
+    );
 
     if (openRouterKey) {
       // Free DeepSeek R1 slugs, newest first — OpenRouter retires them periodically.
