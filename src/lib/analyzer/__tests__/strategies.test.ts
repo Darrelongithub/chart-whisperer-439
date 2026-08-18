@@ -255,7 +255,8 @@ describe("11 — Opening Range Breakout + Retest", () => {
   it("passes when the breakout is retested by a reliable candle", () => {
     const result = outcome(openingRange, base, 2);
     expect(result.result).toBe("PASS");
-    expect(result.sl).toBeCloseTo(100.6);
+    // SL now sits beyond the retest extreme, never inside the entry.
+    expect(result.sl).toBeCloseTo(100.5);
   });
 
   it("fails when the retest candle is unreliable", () => {
