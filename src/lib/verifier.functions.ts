@@ -102,7 +102,10 @@ async function callChat(
     throw new Error(payload.error?.message ?? `${res.status} ${text.slice(0, 300)}`);
   }
   const choice = payload.choices?.[0]?.message;
-  const content = (choice?.content ?? "").trim() || (choice?.reasoning ?? "").trim();
+  const content =
+    (choice?.content ?? "").trim() ||
+    (choice?.reasoning ?? "").trim() ||
+    (choice?.reasoning_content ?? "").trim();
   if (!content) throw new Error("empty response from model");
   return content;
 }
