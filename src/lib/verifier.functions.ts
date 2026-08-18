@@ -81,6 +81,8 @@ async function callChat(
   messages: { role: string; content: string }[],
   extraHeaders: Record<string, string> = {},
 ): Promise<string> {
+  const started = Date.now();
+  // A stalled provider must fail over to the next model instead of hanging the page.
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -89,9 +91,11 @@ async function callChat(
       ...extraHeaders,
     },
     body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 3000 }),
+    signal: AbortSignal.timeout(120_000),
   });
 
   const text = await res.text();
+  console.log(`[verifier] ${model} -> ${res.status} in ${Date.now() - started}ms`);
   let payload: ChatResponse = {};
   try {
     payload = JSON.parse(text) as ChatResponse;
