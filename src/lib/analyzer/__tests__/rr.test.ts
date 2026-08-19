@@ -43,3 +43,22 @@ describe("RR math", () => {
     expect(math.rr).toBeCloseTo((103 - 100.1) / (100.1 - 99));
   });
 });
+
+describe("TP plausibility safety net", () => {
+  it("invalidates a TP further than 10x atr_30m from entry", () => {
+    const math = applySpreadAndRR(pass({ entry: 100, sl: 99, tp: 220 }), 0, 1)!;
+    expect(math.invalidReason).toBe(TP_IMPLAUSIBLE_REASON);
+    expect(math.rr).toBeUndefined();
+  });
+
+  it("keeps a TP within 10x atr_30m", () => {
+    const math = applySpreadAndRR(pass({ entry: 100, sl: 99, tp: 105 }), 0, 1)!;
+    expect(math.invalidReason).toBeUndefined();
+    expect(math.rr).toBe(5);
+  });
+
+  it("skips the check when atr_30m is unavailable", () => {
+    const math = applySpreadAndRR(pass({ entry: 100, sl: 99, tp: 500 }), 0, undefined)!;
+    expect(math.invalidReason).toBeUndefined();
+  });
+});
