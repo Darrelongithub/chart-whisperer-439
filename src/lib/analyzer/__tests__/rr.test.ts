@@ -3,6 +3,7 @@ import {
   applySpreadAndRR,
   NON_POSITIVE_RISK_REASON,
   SL_SIDE_REASON,
+  TP_IMPLAUSIBLE_REASON,
 } from "../math";
 import type { Outcome } from "../types";
 
