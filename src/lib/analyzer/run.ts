@@ -100,7 +100,7 @@ export function* analysisSteps(text: string): Generator<ProgressEvent, RunOutcom
 
       if (outcome.result === "PASS") {
         // Step 4: spread + RR are applied only to PASS results.
-        const math = applySpreadAndRR(outcome, ctx.spread);
+        const math = applySpreadAndRR(outcome, ctx.spread, candle.atr30m);
         if (!math) {
           row.result = "FAIL";
           row.reason = "missing entry/SL/TP price from source rows";
